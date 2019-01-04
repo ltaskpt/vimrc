@@ -3,12 +3,12 @@ let mapleader = ";"    " 比较习惯用;作为命令前缀，右手小拇指直
 nmap <space> :
  
 " 快捷打开编辑vimrc文件的键盘绑定
-map <silent> <leader>ee :e $HOME/.vimrc<cr>
+map <silent> <leader>ee :tabe $HOME/.vimrc<cr>
 autocmd! bufwritepost *.vimrc source $HOME/.vimrc
  
 " ^z快速进入shell
-nmap <C-Z> :shell<cr>
-inoremap <leader>n <esc>
+" nmap <C-Z> :shell<cr>
+" inoremap <leader>n <esc>
  
 " 判断操作系统
 if (has("win32") || has("win64") || has("win32unix"))
@@ -26,8 +26,8 @@ endif
  
 set nocompatible    " 关闭兼容模式
 syntax enable       " 语法高亮
-filetype plugin on  " 文件类型插件
-filetype indent on
+filetype off        " 文件类型插件
+
 set shortmess=atI   " 去掉欢迎界面
 set autoindent
 autocmd BufEnter * :syntax sync fromstart
@@ -55,8 +55,6 @@ set nofen
 set fdl=10
 
 set invlist
-"set listchars=tab:>-,trail:-
-"set list
 
 " tab转化为2个字符
 set expandtab
@@ -75,6 +73,102 @@ set number
 set history=400  " vim记住的历史操作的数量，默认的是20
 set autoread     " 当文件在外部被修改时，自动重新读取
 set mouse=n     " 在所有模式下都允许使用鼠标，还可以是n,v,i,c等
+
+" 切换标签页设置
+:nn <leader>1 1gt
+:nn <leader>2 2gt
+:nn <leader>3 3gt
+:nn <leader>4 4gt
+:nn <leader>5 5gt
+:nn <leader>6 6gt
+:nn <leader>7 7gt
+:nn <leader>8 8gt
+:nn <leader>9 9gt
+:nn <leader>1 1gt
+:nn <leader>0 :tablast<CR>
+
+"-----------------------美化标签栏-----------------------
+"定义颜色
+hi SelectTabLine term=Bold cterm=Bold gui=Bold ctermbg=None
+hi SelectPageNum cterm=None ctermfg=Red ctermbg=None
+hi SelectWindowsNum cterm=None ctermfg=DarkCyan ctermbg=None
+
+hi NormalTabLine cterm=Underline ctermfg=Black ctermbg=LightGray
+hi NormalPageNum cterm=Underline ctermfg=DarkRed ctermbg=LightGray
+hi NormalWindowsNum cterm=Underline ctermfg=DarkMagenta ctermbg=LightGray
+
+function! MyTabLabel(n, select)
+    let label = ''
+    let buflist = tabpagebuflist(a:n)
+    for bufnr in buflist
+        if getbufvar(bufnr, "&modified")
+            let label = '+' 
+            break
+        endif
+    endfor
+
+    let winnr = tabpagewinnr(a:n)
+    let name = bufname(buflist[winnr - 1]) 
+    if name == ''
+        "为没有名字的文档设置个名字
+        if &buftype == 'quickfix'
+            let name = '[Quickfix List]'
+        else
+            let name = '[No Name]'
+        endif
+    else
+        "只取文件名
+        let name = fnamemodify(name, ':t')
+    endif
+
+    let label .= name
+    return label
+endfunction
+
+function! MyTabLine()
+    let s = ''
+    for i in range(tabpagenr('$'))
+        " 选择高亮
+        let hlTab = ''
+        let select = 0 
+        if i + 1 == tabpagenr()
+            let hlTab = '%#SelectTabLine#'
+            " 设置标签页号 (用于鼠标点击)
+            let s .= hlTab . "[%#SelectPageNum#%T" . (i + 1) . hlTab
+            let select = 1
+        else
+            let hlTab = '%#NormalTabLine#'
+            " 设置标签页号 (用于鼠标点击)
+            let s .= hlTab . "[%#NormalPageNum#%T" . (i + 1) . hlTab
+        endif
+
+        " MyTabLabel() 提供标签
+        let s .= ' %<%{MyTabLabel(' . (i + 1) . ', ' . select . ')} '
+
+        "追加窗口数量
+        let wincount = tabpagewinnr(i + 1, '$')
+        if wincount > 1
+            if select == 1
+                let s .= "%#SelectWindowsNum#" . wincount
+            else
+                let s .= "%#NormalWindowsNum#" . wincount
+            endif
+        endif
+        let s .= hlTab . "]"
+    endfor
+
+    " 最后一个标签页之后用 TabLineFill 填充并复位标签页号
+    let s .= '%#TabLineFill#%T'
+
+    " 右对齐用于关闭当前标签页的标签
+    if tabpagenr('$') > 1
+        let s .= '%=%#TabLine#%999XX'
+    endif
+
+    return s
+endfunction
+set tabline=%!MyTabLine()
+" end of 美化标签栏 
  
 "在gvim中高亮当前行
 if (g:isGUI)
@@ -110,10 +204,7 @@ function! CurDir()
     return curdir
 endfunction
 set statusline=[%n]\ %f%m%r%h\ \|\ \ pwd:\ %{CurDir()}\ \ \|%=\|\ %l,%c\ %p%%\ \|\ ascii=%b,hex=%b%{((&fenc==\"\")?\"\":\"\ \|\ \".&fenc)}\ \|\ %{$USER}\ @\ %{hostname()}\
- 
-" 第80列往后加下划线
-"au BufWinEnter * let w:m2=matchadd('Underlined', '\%>' . 80 . 'v.\+', -1)
- 
+
 " 根据给定方向搜索当前光标下的单词，结合下面两个绑定使用
 function! VisualSearch(direction) range
     let l:saved_reg = @"
@@ -139,16 +230,16 @@ vnoremap <silent> # :call VisualSearch('b')<CR>
 nn <C-J> :bn<cr>
 nn <C-K> :bp<cr>
  
-" Bash(Emacs)风格键盘绑定
-imap <C-e> <END>
-imap <C-a> <HOME>
-"imap <C-u> <esc>d0i
-"imap <C-k> <esc>d$i  " 与自动补全中的绑定冲突
+"" Bash(Emacs)风格键盘绑定
+"imap <C-e> <END>
+"imap <C-a> <HOME>
+""imap <C-u> <esc>d0i
+""imap <C-k> <esc>d$i  " 与自动补全中的绑定冲突
  
-"从系统剪切板中复制，剪切，粘贴
-map <F7> "+y
-map <F8> "+x
-map <F9> "+p
+""从系统剪切板中复制，剪切，粘贴
+"map <F7> "+y
+"map <F8> "+x
+"map <F9> "+p
  
 " 恢复上次文件打开位置
 set viminfo='10,\"100,:20,%,n~/.viminfo
@@ -174,8 +265,7 @@ function! <SID>BufcloseCloseIt()
         execute("bdelete! ".l:currentBufNum)
     endif
 endfunction
- 
- 
+
 " 快捷输入
 " 自动完成括号和引号
 inoremap <leader>1 ()<esc>:let leavechar=")"<cr>i
@@ -184,8 +274,41 @@ inoremap <leader>3 {}<esc>:let leavechar="}"<cr>i
 inoremap <leader>4 {<esc>o}<esc>:let leavechar="}"<cr>O
 inoremap <leader>q ''<esc>:let leavechar="'"<cr>i
 inoremap <leader>w ""<esc>:let leavechar='"'<cr>i
- 
- 
+
+" vundle设置
+
+" set the runtime path to include Vundle and initialize
+set rtp+=~/.vim/bundle/Vundle.vim
+call vundle#begin()
+
+" alternatively, pass a path where Vundle should install plugins
+"call vundle#begin('~/some/path/here')
+
+" let Vundle manage Vundle, required
+Plugin 'gmarik/Vundle.vim'
+
+" Add all your plugins here (note older versions of Vundle used Bundle instead of Plugin)
+Plugin 'davidhalter/jedi-vim'
+Plugin 'scrooloose/nerdtree'
+Plugin 'jistr/vim-nerdtree-tabs'
+Plugin 'ervandew/supertab'
+
+" All of your Plugins must be added before the following line
+call vundle#end()            " required
+filetype plugin indent on    " required
+" end of vundle 设置
+
+" jedi-vim设置
+let g:jedi#goto_command = "<leader>d"
+let g:jedi#goto_assignments_command = "<leader>g"
+let g:jedi#goto_definitions_command = ""
+" let g:jedi#documentation_command = "K"
+let g:jedi#usages_command = "<leader>n"
+let g:jedi#completions_command = "<C-Space>"
+let g:jedi#rename_command = "<leader>r"
+let g:jedi#use_tabs_not_buffers = 1
+" end of jedi-vim 设置
+
 " 插件窗口的宽度，如TagList,NERD_tree等，自己设置
 let s:PlugWinSize = 25
  
@@ -235,6 +358,7 @@ map <leader>cu ,cu
 let NERDTreeShowHidden = 1
 let NERDTreeWinPos = "left"
 let NERDTreeWinSize = s:PlugWinSize
+nmap <leader>n :NERDTreeMirror<cr>
 nmap <leader>n :NERDTreeToggle<cr>
  
 " DoxygenToolkit.vim
